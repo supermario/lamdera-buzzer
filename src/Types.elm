@@ -1,34 +1,73 @@
 module Types exposing (..)
 
-import Browser exposing (UrlRequest)
-import Browser.Navigation exposing (Key)
+import Dict exposing (Dict)
+import Lamdera exposing (..)
+import Time
 import Url exposing (Url)
 
 
 type alias FrontendModel =
     { key : Key
-    , message : String
+    , playerName : String
+    , buzzes : Dict String Buzz
+    , buzzed : Bool
+    , mode : Mode
     }
 
 
+type Mode
+    = Joining
+    | ChooseName
+    | ShowBuzzer
+
+
 type alias BackendModel =
-    { message : String
+    { sessions : Dict SessionId Session
+    , order : Int
+    }
+
+
+type alias Buzz =
+    { playerName : String
+    , time : Time.Posix
+    , received : Time.Posix
+    }
+
+
+type alias Session =
+    { sessionId : SessionId
+    , playerName : String
+    , buzz : Maybe Buzz
     }
 
 
 type FrontendMsg
     = UrlClicked UrlRequest
     | UrlChanged Url
+    | ChangedNameInput String
+    | SubmittedName
+    | HitBuzzer
+    | HitBuzzerTime Time.Posix
+    | HitResetBuzzers
     | NoOpFrontendMsg
 
 
 type ToBackend
-    = NoOpToBackend
+    = SetPlayerName String
+    | Buzzed Time.Posix
+    | ResetBuzzers
+    | NoOpToBackend
 
 
 type BackendMsg
-    = NoOpBackendMsg
+    = UserJoined SessionId ClientId
+    | BuzzedTime SessionId Time.Posix Time.Posix
+    | NoOpBackendMsg
 
 
 type ToFrontend
-    = NoOpToFrontend
+    = NeedPlayerName
+    | ReadyToBuzz String
+    | BuzzResult Buzz
+    | ResetBuzzers_
+    | NoOpToFrontend
