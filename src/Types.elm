@@ -2,23 +2,18 @@ module Types exposing (..)
 
 import Dict exposing (Dict)
 import Lamdera exposing (..)
+import Page exposing (..)
 import Time
 import Url exposing (Url)
 
 
 type alias FrontendModel =
     { key : Key
+    , page : Page
     , playerName : String
-    , buzzes : Dict String Buzz
     , buzzed : Bool
-    , mode : Mode
+    , buzzes : Dict String Buzz
     }
-
-
-type Mode
-    = Joining
-    | ChooseName
-    | ShowBuzzer
 
 
 type alias BackendModel =

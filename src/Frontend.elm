@@ -13,8 +13,9 @@ import Element.Input as Input
 import Helpers exposing (..)
 import Html
 import Html.Attributes as Attr
-import Json.Decode as Decode
 import Lamdera exposing (..)
+import Page exposing (..)
+import Round
 import Task
 import Time
 import Types exposing (..)
@@ -25,25 +26,13 @@ type alias Model =
     FrontendModel
 
 
-app =
-    Lamdera.frontend
-        { init = init
-        , onUrlRequest = UrlClicked
-        , onUrlChange = UrlChanged
-        , update = update
-        , updateFromBackend = updateFromBackend
-        , subscriptions = \m -> Sub.batch [ Browser.onKeyDown isSpacebar ]
-        , view = view
-        }
-
-
 init : Url.Url -> Nav.Key -> ( Model, Cmd FrontendMsg )
 init url key =
     ( { key = key
+      , page = Page.pathToPage url
       , playerName = ""
-      , buzzes = Dict.empty
       , buzzed = False
-      , mode = Joining
+      , buzzes = Dict.empty
       }
     , Cmd.none
     )
@@ -65,7 +54,17 @@ update msg model =
                     )
 
         UrlChanged url ->
-            ( model, Cmd.none )
+            let
+                page =
+                    Page.pathToPage url
+            in
+            if model.page /= page then
+                ( { model | page = page }
+                , Cmd.none
+                )
+
+            else
+                ( model, Cmd.none )
 
         ChangedNameInput s ->
             ( { model | playerName = s }, Cmd.none )
@@ -94,10 +93,14 @@ updateFromBackend : ToFrontend -> Model -> ( Model, Cmd FrontendMsg )
 updateFromBackend msg model =
     case msg of
         NeedPlayerName ->
-            ( { model | mode = ChooseName }, Cmd.none )
+            ( { model | page = ChooseName }, Cmd.none )
 
         ReadyToBuzz playerName ->
-            ( { model | mode = ShowBuzzer, playerName = playerName }, Cmd.none )
+            if model.page /= Hosting then
+                ( { model | page = Buzzing, playerName = playerName }, Cmd.none )
+
+            else
+                ( { model | playerName = playerName }, Cmd.none )
 
         BuzzResult buzz ->
             ( { model | buzzes = Dict.insert buzz.playerName buzz model.buzzes }, Cmd.none )
@@ -114,8 +117,9 @@ updateFromBackend msg model =
 view model =
     { title = ""
     , body =
-        [ layout [ padding 20 ] <|
-            case model.mode of
+        [ manualCss
+        , layout [ fontInter, padding 20 ] <|
+            case model.page of
                 Joining ->
                     column [] [ text "Joining" ]
 
@@ -130,7 +134,7 @@ view model =
                         , buttonInactiveBy (model.playerName == "") SubmittedName "Submit"
                         ]
 
-                ShowBuzzer ->
+                Buzzing ->
                     column [ spacing 30 ]
                         [ row [ spacing 20 ]
                             [ if model.buzzed then
@@ -138,23 +142,65 @@ view model =
 
                               else
                                 buzzer "#00ff00" "Ready"
-                            , model.buzzes
-                                |> Dict.toList
-                                |> List.indexedMap
-                                    (\i ( k, v ) ->
-                                        row [ spacing 10 ]
-                                            [ text <| String.fromInt (i + 1)
-                                            , text v.playerName
-                                            , text <| Debug.toString v.time
-                                            , text <| Debug.toString v.received
-                                            ]
-                                    )
-                                |> column [ alignTop ]
+                            , listBuzzes model
+                            ]
+                        ]
+
+                Hosting ->
+                    column [ spacing 30 ]
+                        [ heading "Hosting"
+                        , row [ spacing 20 ]
+                            [ listBuzzes model
                             ]
                         , button HitResetBuzzers "Reset All"
                         ]
         ]
     }
+
+
+listBuzzes model =
+    let
+        buzzes =
+            model.buzzes
+                |> Dict.toList
+                |> List.sortBy (\( k, v ) -> Time.posixToMillis v.received)
+
+        firstMaybe =
+            buzzes |> List.head |> Maybe.map Tuple.second
+    in
+    case firstMaybe of
+        Nothing ->
+            text "No buzzes yet..."
+
+        Just first ->
+            buzzes
+                |> List.indexedMap
+                    (\i ( k, v ) ->
+                        row [ spacing 10 ]
+                            [ text <| String.fromInt (i + 1)
+                            , text v.playerName
+                            , text <| format <| diff v.time first.time
+                            , text <| format <| diff v.received first.time
+                            ]
+                    )
+                |> column [ alignTop ]
+
+
+format ms =
+    "+"
+        ++ (if ms < 1000 then
+                String.fromInt ms ++ "ms"
+
+            else if ms < 60000 then
+                (Round.round 2 <| (toFloat ms / 1000)) ++ "s"
+
+            else
+                ""
+           )
+
+
+diff t1 t2 =
+    Time.posixToMillis t1 - Time.posixToMillis t2
 
 
 buzzer color label =
@@ -170,36 +216,13 @@ buzzer color label =
             text label
 
 
-buttonInactiveBy condition msg label =
-    if condition then
-        el [ padding 10, Background.color <| fromHex "#eee", Font.color <| fromHex "#AAA" ] <| text label
-
-    else
-        button msg label
-
-
-button msg label =
-    Input.button
-        [ padding 10
-        , Background.color <| fromHex "#ccc"
-        , Border.rounded 10
-        ]
-        { onPress = Just msg, label = text label }
-
-
-isSpacebar : Decode.Decoder FrontendMsg
-isSpacebar =
-    keyDecoder
-        |> Decode.andThen
-            (\v ->
-                if v == " " then
-                    Decode.succeed HitBuzzer
-
-                else
-                    Decode.succeed NoOpFrontendMsg
-            )
-
-
-keyDecoder : Decode.Decoder String
-keyDecoder =
-    Decode.field "key" Decode.string
+app =
+    Lamdera.frontend
+        { init = init
+        , onUrlRequest = UrlClicked
+        , onUrlChange = UrlChanged
+        , update = update
+        , updateFromBackend = updateFromBackend
+        , subscriptions = \m -> Sub.batch [ Browser.onKeyDown isSpacebar ]
+        , view = view
+        }
