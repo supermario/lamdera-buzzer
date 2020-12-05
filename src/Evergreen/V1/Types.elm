@@ -1,6 +1,7 @@
 module Evergreen.V1.Types exposing (..)
 
 import Dict
+import Evergreen.V1.Page
 import Lamdera
 import Time
 import Url
@@ -13,18 +14,12 @@ type alias Buzz =
     }
 
 
-type Mode
-    = Joining
-    | ChooseName
-    | ShowBuzzer
-
-
 type alias FrontendModel =
     { key : Lamdera.Key
+    , page : Evergreen.V1.Page.Page
     , playerName : String
-    , buzzes : (Dict.Dict String Buzz)
     , buzzed : Bool
-    , mode : Mode
+    , buzzes : (Dict.Dict String Buzz)
     }
 
 
