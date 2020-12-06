@@ -8,6 +8,7 @@ import Dict
 import Element exposing (..)
 import Element.Background as Background
 import Element.Border as Border
+import Element.Events exposing (onClick)
 import Element.Font as Font
 import Element.Input as Input
 import Helpers exposing (..)
@@ -210,6 +211,7 @@ buzzer color label =
         , Border.rounded 100
         , Background.color <| fromHex color
         , Font.color <| fromHex "#000"
+        , onClick HitBuzzer
         ]
     <|
         el [ centerX, centerY ] <|
