@@ -41,16 +41,58 @@ update msg model =
                                     { sessionId = sessionId
                                     , playerName = ""
                                     , buzz = Nothing
+                                    , pingStart = Time.millisToPosix 0
+                                    , latency = 0
                                     }
                       }
-                    , sendToFrontend sessionId NeedPlayerName
+                    , Cmd.batch
+                        [ sendToFrontend sessionId NeedPlayerName
+                        , startPing sessionId
+                        ]
                     )
 
                 Just session ->
-                    ( model, sendToFrontend sessionId (ReadyToBuzz session.playerName) )
+                    ( model
+                    , Cmd.batch
+                        [ sendToFrontend sessionId (ReadyToBuzz session.playerName)
+                        , startPing sessionId
+                        ]
+                    )
+
+        StartPing sessionId startTime ->
+            ( { model
+                | sessions =
+                    model.sessions
+                        |> Dict.update sessionId
+                            (Maybe.map
+                                (\session ->
+                                    { session | pingStart = startTime }
+                                )
+                            )
+              }
+            , sendToFrontend sessionId GotPing
+            )
+
+        EndPing sessionId pingEnd ->
+            ( { model
+                | sessions =
+                    model.sessions
+                        |> Dict.update sessionId
+                            (Maybe.map
+                                (\session ->
+                                    let
+                                        latency =
+                                            (Time.posixToMillis pingEnd - Time.posixToMillis session.pingStart) // 2
+                                    in
+                                    { session | latency = latency }
+                                )
+                            )
+              }
+            , Cmd.none
+            )
 
         BuzzedTime sessionId userTime serverTime ->
-            requiringSession model
+            withSession model
                 sessionId
                 (\session ->
                     let
@@ -58,17 +100,14 @@ update msg model =
                             { playerName = session.playerName
                             , time = userTime
                             , received = serverTime
+                            , latency = session.latency
                             }
                     in
                     ( { model
                         | sessions =
                             model.sessions
                                 |> Dict.insert sessionId
-                                    { session
-                                        | buzz =
-                                            Just
-                                                buzz
-                                    }
+                                    { session | buzz = Just buzz }
                       }
                     , broadcast (BuzzResult buzz)
                     )
@@ -78,9 +117,16 @@ update msg model =
             ( model, Cmd.none )
 
 
+startPing sessionId =
+    Time.now |> Task.perform (StartPing sessionId)
+
+
 updateFromFrontend : SessionId -> ClientId -> ToBackend -> Model -> ( Model, Cmd BackendMsg )
 updateFromFrontend sessionId clientId msg model =
     case msg of
+        GotPong ->
+            ( model, Time.now |> Task.perform (EndPing sessionId) )
+
         SetPlayerName playerName ->
             ( { model
                 | sessions =
@@ -100,7 +146,7 @@ updateFromFrontend sessionId clientId msg model =
             ( model, Cmd.none )
 
 
-requiringSession model sessionId func =
+withSession model sessionId func =
     case Dict.get sessionId model.sessions of
         Just session ->
             func session

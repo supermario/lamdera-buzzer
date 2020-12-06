@@ -22,17 +22,20 @@ type alias BackendModel =
     }
 
 
-type alias Buzz =
-    { playerName : String
-    , time : Time.Posix
-    , received : Time.Posix
-    }
-
-
 type alias Session =
     { sessionId : SessionId
     , playerName : String
     , buzz : Maybe Buzz
+    , pingStart : Time.Posix
+    , latency : Int
+    }
+
+
+type alias Buzz =
+    { playerName : String
+    , time : Time.Posix
+    , received : Time.Posix
+    , latency : Int
     }
 
 
@@ -48,7 +51,8 @@ type FrontendMsg
 
 
 type ToBackend
-    = SetPlayerName String
+    = GotPong
+    | SetPlayerName String
     | Buzzed Time.Posix
     | ResetBuzzers
     | NoOpToBackend
@@ -56,12 +60,15 @@ type ToBackend
 
 type BackendMsg
     = UserJoined SessionId ClientId
+    | StartPing SessionId Time.Posix
+    | EndPing SessionId Time.Posix
     | BuzzedTime SessionId Time.Posix Time.Posix
     | NoOpBackendMsg
 
 
 type ToFrontend
     = NeedPlayerName
+    | GotPing
     | ReadyToBuzz String
     | BuzzResult Buzz
     | ResetBuzzers_

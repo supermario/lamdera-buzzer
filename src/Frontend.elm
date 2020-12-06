@@ -92,6 +92,9 @@ update msg model =
 updateFromBackend : ToFrontend -> Model -> ( Model, Cmd FrontendMsg )
 updateFromBackend msg model =
     case msg of
+        GotPing ->
+            ( model, sendToBackend GotPong )
+
         NeedPlayerName ->
             ( { model | page = ChooseName }, Cmd.none )
 
@@ -136,22 +139,18 @@ view model =
 
                 Buzzing ->
                     column [ spacing 30 ]
-                        [ row [ spacing 20 ]
-                            [ if model.buzzed then
-                                buzzer "#ff0000" "Buzzed!"
+                        [ if model.buzzed then
+                            buzzer "#ff0000" "Buzzed!"
 
-                              else
-                                buzzer "#00ff00" "Ready"
-                            , listBuzzes model
-                            ]
+                          else
+                            buzzer "#00ff00" "Ready"
+                        , listBuzzes model
                         ]
 
                 Hosting ->
                     column [ spacing 30 ]
                         [ heading "Hosting"
-                        , row [ spacing 20 ]
-                            [ listBuzzes model
-                            ]
+                        , listBuzzes model
                         , button HitResetBuzzers "Reset All"
                         ]
         ]
@@ -179,11 +178,12 @@ listBuzzes model =
                         row [ spacing 10 ]
                             [ text <| String.fromInt (i + 1)
                             , text v.playerName
-                            , text <| format <| diff v.time first.time
-                            , text <| format <| diff v.received first.time
+                            , text <| format <| diff v.received first.received
+                            , text <| format <| diff v.time first.received
+                            , text <| format <| v.latency
                             ]
                     )
-                |> column [ alignTop ]
+                |> column [ alignTop, spacing 10 ]
 
 
 format ms =
@@ -195,7 +195,7 @@ format ms =
                 (Round.round 2 <| (toFloat ms / 1000)) ++ "s"
 
             else
-                ""
+                "more than 1 minute"
            )
 
 
