@@ -27,23 +27,34 @@ fromHex str =
 
 
 heading str =
-    el [ Font.bold, Font.size 22 ] <| text str
+    el [ Font.bold, Font.size 22, centerX ] <| text str
 
 
-buttonInactiveBy condition msg label =
+buttonInactiveBy attrs condition msg label =
     if condition then
-        el [ padding 10, Background.color <| fromHex "#eee", Font.color <| fromHex "#AAA" ] <| text label
+        el
+            ([ padding 10
+             , Background.color <| fromHex "#eee"
+             , Font.color <| fromHex "#AAA"
+             , Border.rounded 10
+             ]
+                ++ attrs
+            )
+        <|
+            text label
 
     else
-        button msg label
+        button attrs msg label
 
 
-button msg label =
+button attrs msg label =
     Input.button
-        [ padding 10
-        , Background.color <| fromHex "#ccc"
-        , Border.rounded 10
-        ]
+        ([ padding 10
+         , Background.color <| fromHex "#ccc"
+         , Border.rounded 10
+         ]
+            ++ attrs
+        )
         { onPress = Just msg, label = text label }
 
 

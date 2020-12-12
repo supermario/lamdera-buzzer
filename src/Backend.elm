@@ -81,6 +81,7 @@ update msg model =
                             (Maybe.map
                                 (\session ->
                                     let
+                                        -- Latency is half the round-trip-time
                                         latency =
                                             (Time.posixToMillis pingEnd - Time.posixToMillis session.pingStart) // 2
                                     in

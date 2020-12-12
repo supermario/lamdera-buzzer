@@ -128,18 +128,18 @@ view model =
                     column [] [ text "Joining" ]
 
                 ChooseName ->
-                    column [ spacing 10 ]
-                        [ Input.text []
+                    column [ spacing 10, width (fill |> maximum 400), centerX ]
+                        [ Input.text [ Border.rounded 10, centerX ]
                             { onChange = ChangedNameInput
                             , text = model.playerName
                             , placeholder = Just (Input.placeholder [] (text "Desired name"))
                             , label = Input.labelAbove [] (text "Choose name:")
                             }
-                        , buttonInactiveBy (model.playerName == "") SubmittedName "Submit"
+                        , buttonInactiveBy [ centerX ] (model.playerName == "") SubmittedName "Submit"
                         ]
 
                 Buzzing ->
-                    column [ spacing 30 ]
+                    column [ spacing 30, width fill ]
                         [ if model.buzzed then
                             buzzer "#ff0000" "Buzzed!"
 
@@ -149,10 +149,10 @@ view model =
                         ]
 
                 Hosting ->
-                    column [ spacing 30 ]
+                    column [ spacing 30, width fill ]
                         [ heading "Hosting"
                         , listBuzzes model
-                        , button HitResetBuzzers "Reset All"
+                        , button [ centerX ] HitResetBuzzers "Reset All"
                         ]
         ]
     }
@@ -163,41 +163,56 @@ listBuzzes model =
         buzzes =
             model.buzzes
                 |> Dict.toList
-                |> List.sortBy (\( k, v ) -> Time.posixToMillis v.received)
+                |> List.sortBy (\( k, v ) -> Time.posixToMillis v.received - v.latency)
 
         firstMaybe =
             buzzes |> List.head |> Maybe.map Tuple.second
     in
     case firstMaybe of
         Nothing ->
-            text "No buzzes yet..."
+            el [ centerX ] <| text "No buzzes yet..."
 
         Just first ->
-            buzzes
-                |> List.indexedMap
-                    (\i ( k, v ) ->
-                        row [ spacing 10 ]
-                            [ text <| String.fromInt (i + 1)
-                            , text v.playerName
-                            , text <| format <| diff v.received first.received
-                            , text <| format <| diff v.time first.received
-                            , text <| format <| v.latency
-                            ]
-                    )
-                |> column [ alignTop, spacing 10 ]
+            Element.indexedTable [ centerX, width (fill |> maximum 600), spacing 10 ]
+                { data = buzzes |> List.map Tuple.second
+                , columns =
+                    [ { header = text "Pos"
+                      , width = fill
+                      , view =
+                            \i buzz ->
+                                text <| String.fromInt (i + 1)
+                      }
+                    , { header = text "Name"
+                      , width = fill
+                      , view =
+                            \i buzz ->
+                                text buzz.playerName
+                      }
+                    , { header = text "Diff"
+                      , width = fill
+                      , view =
+                            \i buzz ->
+                                text <| "+" ++ (format <| diff buzz.received first.received)
+                      }
+                    , { header = text "Latency"
+                      , width = fill
+                      , view =
+                            \i buzz ->
+                                text <| format <| buzz.latency
+                      }
+                    ]
+                }
 
 
 format ms =
-    "+"
-        ++ (if ms < 1000 then
-                String.fromInt ms ++ "ms"
+    if ms < 1000 then
+        String.fromInt ms ++ "ms"
 
-            else if ms < 60000 then
-                (Round.round 2 <| (toFloat ms / 1000)) ++ "s"
+    else if ms < 60000 then
+        (Round.round 2 <| (toFloat ms / 1000)) ++ "s"
 
-            else
-                "more than 1 minute"
-           )
+    else
+        "more than 1 minute"
 
 
 diff t1 t2 =
@@ -212,6 +227,7 @@ buzzer color label =
         , Background.color <| fromHex color
         , Font.color <| fromHex "#000"
         , onClick HitBuzzer
+        , centerX
         ]
     <|
         el [ centerX, centerY ] <|
