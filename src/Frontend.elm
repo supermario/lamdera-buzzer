@@ -141,10 +141,10 @@ view model =
                 Buzzing ->
                     column [ spacing 30, width fill ]
                         [ if model.buzzed then
-                            buzzer "#ff0000" "Buzzed!"
+                            buzzer "#E5414D" "Buzzed!"
 
                           else
-                            buzzer "#00ff00" "Ready"
+                            buzzer "#87D750" "Ready"
                         , listBuzzes model
                         ]
 
@@ -176,25 +176,25 @@ listBuzzes model =
             Element.indexedTable [ centerX, width (fill |> maximum 600), spacing 10 ]
                 { data = buzzes |> List.map Tuple.second
                 , columns =
-                    [ { header = text "Pos"
+                    [ { header = el [ Font.color grey ] <| text "Pos"
                       , width = fill
                       , view =
                             \i buzz ->
                                 text <| String.fromInt (i + 1)
                       }
-                    , { header = text "Name"
+                    , { header = el [ Font.color grey ] <| text "Name"
                       , width = fill
                       , view =
                             \i buzz ->
                                 text buzz.playerName
                       }
-                    , { header = text "Diff"
+                    , { header = el [ Font.color grey ] <| text "Diff"
                       , width = fill
                       , view =
                             \i buzz ->
                                 text <| "+" ++ (format <| diff buzz.received first.received)
                       }
-                    , { header = text "Latency"
+                    , { header = el [ Font.color grey ] <| text "Latency"
                       , width = fill
                       , view =
                             \i buzz ->
@@ -232,6 +232,10 @@ buzzer color label =
     <|
         el [ centerX, centerY ] <|
             text label
+
+
+grey =
+    fromHex "#999"
 
 
 app =
