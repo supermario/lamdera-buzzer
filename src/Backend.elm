@@ -54,7 +54,11 @@ update msg model =
                 Just session ->
                     ( model
                     , Cmd.batch
-                        [ sendToFrontend sessionId (ReadyToBuzz session.playerName)
+                        [ if session.playerName == "" then
+                            sendToFrontend sessionId NeedPlayerName
+
+                          else
+                            sendToFrontend sessionId (ReadyToBuzz session.playerName)
                         , startPing sessionId
                         ]
                     )
